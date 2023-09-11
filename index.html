@@ -1,7 +1,203 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <title>Toilet Finder</title>
+    <!-- Include Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <!-- Include Bootstrap CSS (for modal) -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            width: 100vw;
+            max-width: 800px; /* Adjust this value as needed */
+            height: 70vh; /* Use viewport height for a full-screen map */
+            max-height: 800px;
+        }
+
+        .info-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+        }
+
+        .info-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
 <body>
-<h1>Hello World</h1>
-<p>I'm hosted with GitHub Pages.</p>
+    <h1>Toilet Finder</h1>
+    <div id="map"></div>
+    <button id="findToilets">Find Toilets</button>
+    <ul id="toiletList"></ul>
+
+    <!-- Include Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <!-- Include Bootstrap JavaScript (for modal) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        // Wait for the DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize the map and set its center and zoom level
+            var map = L.map('map').setView([51.505, -0.09], 13);
+
+            // Add a tile layer from OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Initialize an array to store markers
+            var markers = [];
+
+            // Attach functionality to the "Find Toilets" button
+            document.getElementById("findToilets").addEventListener("click", function () {
+                // Clear existing markers from the map
+                clearMarkers();
+
+                // Get the bounds (coordinates) of the currently visible map area
+                const bounds = map.getBounds();
+                const northEast = bounds.getNorthEast();
+                const southWest = bounds.getSouthWest();
+
+                // Fetch toilets within the current map area
+                fetchToiletsWithinBounds(northEast, southWest)
+                    .then(toilets => {
+                        console.log("Toilets:", toilets); // Debugging output
+                        displayToiletsOnMap(toilets);
+                    })
+                    .catch(error => {
+                        console.error("Error fetching toilets:", error);
+                    });
+            });
+
+            // Function to fetch toilets within a specified bounding box
+            function fetchToiletsWithinBounds(northEast, southWest) {
+                const bbox = `${southWest.lat},${southWest.lng},${northEast.lat},${northEast.lng}`;
+                const url = `https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="toilets"](${bbox});out;`;
+
+                return fetch(url)
+                    .then(response => response.json())
+                    .then(data => data.elements)
+                    .catch(error => console.error("Error fetching toilets:", error));
+            }
+
+            // Function to display toilets as markers on the map
+            function displayToiletsOnMap(toilets) {
+                toilets.forEach(toilet => {
+                    let marker = L.marker([toilet.lat, toilet.lon])
+                        .addTo(map)
+                        .bindPopup(`
+                            <strong>Toilet Information</strong><br>
+                            Location: ${toilet.lat}, ${toilet.lon}<br>
+                            Hours: ${toilet.tags.opening_hours || 'Not specified'}<br>
+                            Fee: ${toilet.tags.fee || 'Not specified'}<br>
+                            <a href="#" class="more-info-link" data-toilet-info='${JSON.stringify(toilet)}'>More Information</a>`)
+                        .on('click', function () {
+                            // Display basic information when clicked
+                            this.openPopup();
+                        });
+
+                    // Add the marker to the markers array
+                    markers.push(marker);
+
+                });
+
+                // Register event listeners for "More Information" links after adding markers
+                registerMoreInfoEventListeners();
+
+
+                // Event delegation for "More Information" links
+                $(document).on('click', '.more-info-link', function(event) {
+                    event.preventDefault();
+                    console.log('Link clicked'); // Check if this message appears in the console
+                    console.log(this)
+                    const toiletInfo = JSON.parse($(this).attr('data-toilet-info'));
+                    console.log('Toilet info:', toiletInfo); // Check if the data is extracted correctly
+                    openToiletModal(toiletInfo);
+                });
+            }
+
+            // JavaScript code to open the modal and populate it with data
+            function openToiletModal(toilet) {
+                // Get references to the modal elements
+                const modalTitle = document.getElementById('modalTitle');
+                const modalBody = document.getElementById('modalBody');
+
+                // Populate the modal elements with toilet information
+                modalTitle.textContent = toilet.tags.name || 'Toilet Name';
+                // Customize this part to display the desired information in the modal body
+                modalBody.innerHTML = `
+                    <p><strong>Location:</strong> ${toilet.lat}, ${toilet.lon}</p>
+                    <p><strong>Type:</strong> ${toilet.tags.amenity || 'Not specified'}</p>
+                    <p><strong>Hours:</strong> ${toilet.tags.opening_hours || 'Not specified'}</p>
+                    <p><strong>Non-customers:</strong> ${toilet.tags.access || 'Not specified'}</p>
+                    <p><strong>Wheelchair Accessible:</strong> ${toilet.tags.wheelchair || 'Not specified'}</p>
+                    <p><strong>Description:</strong> ${toilet.tags.description || 'Not available'}</p>
+                    <p><strong>Changing Table:</strong> ${toilet.tags.changing_table || 'Not specified'}</p>
+                    <p><strong>Drinking Water:</strong> ${toilet.tags.drinking_water || 'Not specified'}</p>
+                    <p><strong>Indoor:</strong> ${toilet.tags.indoor || 'Not specified'}</p>
+                `;
+
+                // Trigger the modal to open
+                $('#toiletModal').modal('show');
+            }
+
+            // Function to register event listeners for "More Information" links
+            function registerMoreInfoEventListeners() {
+                console.log('register called');
+
+            }
+
+            // Function to clear existing markers from the map
+            function clearMarkers() {
+                markers.forEach(marker => {
+                    map.removeLayer(marker);
+                });
+                // Clear the markers array
+                markers = [];
+            }
+        });
+    </script>
+
+    <!-- Modal for Toilet Details -->
+    <div class="modal fade" id="toiletModal" tabindex="-1" role="dialog" aria-labelledby="modalTitle" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Toilet Name</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- Toilet details will be populated here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -52,6 +52,10 @@
         <button id="search-button">Search</button>
     </div>
 
+    <button id="locateUser">Near Me</button>
+
+
+
     <ul id="toiletList"></ul>
 
 
@@ -193,7 +197,23 @@
         }
 
 
-
+        // JavaScript to handle location request
+        document.getElementById('locateUser').addEventListener('click', function () {
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    function (position) {
+                        const latitude = position.coords.latitude;
+                        const longitude = position.coords.longitude;
+                        map.setView([latitude, longitude], 13);
+                    },
+                    function (error) {
+                        console.error('Error getting user location:', error);
+                    }
+                );
+            } else {
+                console.log('Geolocation is not supported by this browser.');
+            }
+        });
 
         // JavaScript code to open the modal and populate it with data
         function openToiletModal(toilet) {

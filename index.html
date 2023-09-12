@@ -82,17 +82,17 @@
 
         var mapLoaded = false;
 
-        // Function to fetch toilets within a specified bounding box
+        // Function to fetch toilets within a specified bounding box with a limit of 100
         function fetchToiletsWithinBounds(northEast, southWest) {
             const bbox = `${southWest.lat},${southWest.lng},${northEast.lat},${northEast.lng}`;
-            const url = `https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="toilets"](${bbox});out;`;
+            const limit = 100; // Limit the number of results to 100
+            const url = `https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="toilets"](${bbox});out ${limit};`;
 
             return fetch(url)
                 .then(response => response.json())
                 .then(data => data.elements)
                 .catch(error => console.error("Error fetching toilets:", error));
         }
-
         // Function to handle the map reload
         function handleMapReload() {
             // You can perform any actions related to map reloading here

@@ -137,10 +137,14 @@
 
         // Function to display toilets as markers on the map
         function displayToiletsOnMap(toilets) {
-          // Initialize a counter to keep track of displayed toilets
-          let displayedToiletsCount = 0;
 
           toilets.slice(0, 50).forEach(toilet => {
+            // Check if the toilet already exists in markers
+            const existingMarker = markers.find(marker => {
+                const latLng = marker.getLatLng();
+                return latLng.lat === toilet.lat && latLng.lng === toilet.lon;
+            });
+            if(!existingMarker){
               let marker = L.marker([toilet.lat, toilet.lon]).addTo(map);
 
               // Create the popup content
@@ -160,6 +164,7 @@
               marker.bindPopup(popup);
 
               markers.push(marker);
+            }
           });
 
 
@@ -212,13 +217,16 @@
 
         // Function to clear markers outside of the current visible area
         function clearMarkers(bounds) {
-            markers.forEach(marker => {
+            markers = markers.filter(marker => {
                 const latLng = marker.getLatLng();
                 if (!bounds.contains(latLng)) {
                     map.removeLayer(marker);
+                    return false; // Exclude this marker from the markers array
                 }
+                return true; // Keep this marker in the markers array
             });
         }
+
 
         // Function to handle the search
         function handleSearch() {
@@ -253,6 +261,8 @@
                                         console.error("Error fetching toilets:", error);
                                     });
                               });
+                              // Clear the search input field
+                              searchInput.value = '';
                         } else {
                             alert('Location not found. Please try another search term.');
                         }

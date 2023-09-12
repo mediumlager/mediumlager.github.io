@@ -97,10 +97,11 @@
         function handleMapReload() {
             // You can perform any actions related to map reloading here
             // For example, you can trigger the fetching of toilets
-            clearMarkers();
+
             const bounds = map.getBounds();
             const northEast = bounds.getNorthEast();
             const southWest = bounds.getSouthWest();
+            clearMarkers(bounds);
             fetchToiletsWithinBounds(northEast, southWest)
                 .then(toilets => {
                     console.log("Toilets near the location:", toilets);
@@ -139,28 +140,28 @@
           // Initialize a counter to keep track of displayed toilets
           let displayedToiletsCount = 0;
 
-          toilets.forEach(toilet => {
-            // Check if the displayedToiletsCount is less than 50
-              if (displayedToiletsCount < 50) {
-                let marker = L.marker([toilet.lat, toilet.lon])
-                    .addTo(map)
-                    .bindPopup(`
-                        <strong>Toilet Information</strong><br>
-                        Location: ${toilet.lat}, ${toilet.lon}<br>
-                        Hours: ${toilet.tags.opening_hours || 'Not specified'}<br>
-                        Fee: ${toilet.tags.fee || 'Not specified'}<br>
-                        <a href="#" class="more-info-link" data-toilet-info='${JSON.stringify(toilet)}'>More Information</a>`)
-                    .on('click', function () {
-                        // Display basic information when clicked
-                        this.openPopup();
-                    });
-                // Increment the displayedToiletsCount
-                displayedToiletsCount++;
+          toilets.slice(0, 50).forEach(toilet => {
+              let marker = L.marker([toilet.lat, toilet.lon]).addTo(map);
 
-                // Add the marker to the markers array
-                markers.push(marker);
-              }
+              // Create the popup content
+              const popupContent = `
+                  <strong>Toilet Information</strong><br>
+                  Location: ${toilet.lat}, ${toilet.lon}<br>
+                  Hours: ${toilet.tags.opening_hours || 'Not specified'}<br>
+                  Fee: ${toilet.tags.fee || 'Not specified'}<br>
+                  <a href="#" class="more-info-link" data-toilet-info='${JSON.stringify(toilet)}'>More Information</a>`;
+
+              // Create the popup
+              const popup = L.popup({
+                  autoPan: true, // Enable auto-panning to keep the popup within the map bounds
+                  autoPanPadding: L.point(50, 50), // Adjust padding to control the position
+              }).setContent(popupContent);
+
+              marker.bindPopup(popup);
+
+              markers.push(marker);
           });
+
 
                 // Register event listeners for "More Information" links after adding markers
                 registerMoreInfoEventListeners();
@@ -209,13 +210,14 @@
 
         }
 
-        // Function to clear existing markers from the map
-        function clearMarkers() {
+        // Function to clear markers outside of the current visible area
+        function clearMarkers(bounds) {
             markers.forEach(marker => {
-                map.removeLayer(marker);
+                const latLng = marker.getLatLng();
+                if (!bounds.contains(latLng)) {
+                    map.removeLayer(marker);
+                }
             });
-            // Clear the markers array
-            markers = [];
         }
 
         // Function to handle the search
@@ -234,10 +236,11 @@
 
                             map.once('moveend',function() {
                                 // Get the bounds (coordinates) of the currently visible map area
-                                clearMarkers();
+                                //clearMarkers();
                                 const bounds = map.getBounds();
                                 const northEast = bounds.getNorthEast();
                                 const southWest = bounds.getSouthWest();
+                                clearMarkers(bounds);
                                 console.log('northEast:', northEast);
                                 console.log('southWest:',southWest);
                                 fetchToiletsWithinBounds(northEast, southWest)

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Toilet Finder</title>
+    <title>Toilet Finder Beta</title>
     <!-- Include Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <!-- Include Bootstrap CSS (for modal) -->
@@ -44,10 +44,17 @@
     </style>
 </head>
 <body>
-    <h1>Toilet Finder</h1>
+    <h1>Toilet Finder Beta</h1>
     <div id="map"></div>
-    <button id="findToilets">Find Toilets</button>
+
+    <div id="search-container">
+        <input type="text" id="location-search" placeholder="Search for a place">
+        <button id="search-button">Search</button>
+    </div>
+
     <ul id="toiletList"></ul>
+
+
 
     <!-- Include Leaflet JavaScript -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -60,7 +67,7 @@
         // Wait for the DOM to be fully loaded
         document.addEventListener('DOMContentLoaded', function () {
             // Initialize the map and set its center and zoom level
-            var map = L.map('map').setView([51.505, -0.09], 13);
+            var map = L.map('map').setView([60.192, 24.946], 13);
 
             // Add a tile layer from OpenStreetMap
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -70,58 +77,83 @@
             // Initialize an array to store markers
             var markers = [];
 
-            // Attach functionality to the "Find Toilets" button
-            document.getElementById("findToilets").addEventListener("click", function () {
-                // Clear existing markers from the map
-                clearMarkers();
+            // Create a custom map reload event
+        const mapReloadEvent = new Event('map-reloaded');
 
-                // Get the bounds (coordinates) of the currently visible map area
-                const bounds = map.getBounds();
-                const northEast = bounds.getNorthEast();
-                const southWest = bounds.getSouthWest();
+        var mapLoaded = false;
 
-                // Fetch toilets within the current map area
-                fetchToiletsWithinBounds(northEast, southWest)
-                    .then(toilets => {
-                        console.log("Toilets:", toilets); // Debugging output
-                        displayToiletsOnMap(toilets);
-                    })
-                    .catch(error => {
-                        console.error("Error fetching toilets:", error);
-                    });
-            });
+        // Function to fetch toilets within a specified bounding box
+        function fetchToiletsWithinBounds(northEast, southWest) {
+            const bbox = `${southWest.lat},${southWest.lng},${northEast.lat},${northEast.lng}`;
+            const url = `https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="toilets"](${bbox});out;`;
 
-            // Function to fetch toilets within a specified bounding box
-            function fetchToiletsWithinBounds(northEast, southWest) {
-                const bbox = `${southWest.lat},${southWest.lng},${northEast.lat},${northEast.lng}`;
-                const url = `https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="toilets"](${bbox});out;`;
+            return fetch(url)
+                .then(response => response.json())
+                .then(data => data.elements)
+                .catch(error => console.error("Error fetching toilets:", error));
+        }
 
-                return fetch(url)
-                    .then(response => response.json())
-                    .then(data => data.elements)
-                    .catch(error => console.error("Error fetching toilets:", error));
-            }
-
-            // Function to display toilets as markers on the map
-            function displayToiletsOnMap(toilets) {
-                toilets.forEach(toilet => {
-                    let marker = L.marker([toilet.lat, toilet.lon])
-                        .addTo(map)
-                        .bindPopup(`
-                            <strong>Toilet Information</strong><br>
-                            Location: ${toilet.lat}, ${toilet.lon}<br>
-                            Hours: ${toilet.tags.opening_hours || 'Not specified'}<br>
-                            Fee: ${toilet.tags.fee || 'Not specified'}<br>
-                            <a href="#" class="more-info-link" data-toilet-info='${JSON.stringify(toilet)}'>More Information</a>`)
-                        .on('click', function () {
-                            // Display basic information when clicked
-                            this.openPopup();
-                        });
-
-                    // Add the marker to the markers array
-                    markers.push(marker);
-
+        // Function to handle the map reload
+        function handleMapReload() {
+            // You can perform any actions related to map reloading here
+            // For example, you can trigger the fetching of toilets
+            clearMarkers();
+            const bounds = map.getBounds();
+            const northEast = bounds.getNorthEast();
+            const southWest = bounds.getSouthWest();
+            fetchToiletsWithinBounds(northEast, southWest)
+                .then(toilets => {
+                    console.log("Toilets near the location:", toilets);
+                    // Display the toilets on the map or in a list
+                    displayToiletsOnMap(toilets);
+                })
+                .catch(error => {
+                    console.error("Error fetching toilets:", error);
                 });
+        }
+
+        // Attach event listeners to the map
+        map.on('moveend', function () {
+            // Trigger the custom map reload event when the map has finished moving
+            document.dispatchEvent(mapReloadEvent);
+        });
+
+        map.on('zoomend', function () {
+            // Trigger the custom map reload event when the map has finished zooming
+            document.dispatchEvent(mapReloadEvent);
+        });
+
+        map.on('load', function () {
+            // Trigger the custom map reload event when the map has finished loading
+            if (!mapLoaded) {
+                mapLoaded = true;
+                document.dispatchEvent(mapReloadEvent);
+            }
+        });
+
+        // Listen for the custom map reload event and handle it
+        document.addEventListener('map-reloaded', handleMapReload);
+
+        // Function to display toilets as markers on the map
+        function displayToiletsOnMap(toilets) {
+            toilets.forEach(toilet => {
+                let marker = L.marker([toilet.lat, toilet.lon])
+                    .addTo(map)
+                    .bindPopup(`
+                        <strong>Toilet Information</strong><br>
+                        Location: ${toilet.lat}, ${toilet.lon}<br>
+                        Hours: ${toilet.tags.opening_hours || 'Not specified'}<br>
+                        Fee: ${toilet.tags.fee || 'Not specified'}<br>
+                        <a href="#" class="more-info-link" data-toilet-info='${JSON.stringify(toilet)}'>More Information</a>`)
+                    .on('click', function () {
+                        // Display basic information when clicked
+                        this.openPopup();
+                    });
+
+                // Add the marker to the markers array
+                markers.push(marker);
+
+            });
 
                 // Register event listeners for "More Information" links after adding markers
                 registerMoreInfoEventListeners();
@@ -138,46 +170,117 @@
                 });
             }
 
-            // JavaScript code to open the modal and populate it with data
-            function openToiletModal(toilet) {
-                // Get references to the modal elements
-                const modalTitle = document.getElementById('modalTitle');
-                const modalBody = document.getElementById('modalBody');
+        // JavaScript code to open the modal and populate it with data
+        function openToiletModal(toilet) {
+            // Get references to the modal elements
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
 
-                // Populate the modal elements with toilet information
-                modalTitle.textContent = toilet.tags.name || 'Toilet Name';
-                // Customize this part to display the desired information in the modal body
-                modalBody.innerHTML = `
-                    <p><strong>Location:</strong> ${toilet.lat}, ${toilet.lon}</p>
-                    <p><strong>Type:</strong> ${toilet.tags.amenity || 'Not specified'}</p>
-                    <p><strong>Hours:</strong> ${toilet.tags.opening_hours || 'Not specified'}</p>
-                    <p><strong>Non-customers:</strong> ${toilet.tags.access || 'Not specified'}</p>
-                    <p><strong>Wheelchair Accessible:</strong> ${toilet.tags.wheelchair || 'Not specified'}</p>
-                    <p><strong>Description:</strong> ${toilet.tags.description || 'Not available'}</p>
-                    <p><strong>Changing Table:</strong> ${toilet.tags.changing_table || 'Not specified'}</p>
-                    <p><strong>Drinking Water:</strong> ${toilet.tags.drinking_water || 'Not specified'}</p>
-                    <p><strong>Indoor:</strong> ${toilet.tags.indoor || 'Not specified'}</p>
-                `;
+            // Populate the modal elements with toilet information
+            modalTitle.textContent = toilet.tags.name || 'Toilet Name';
+            // Customize this part to display the desired information in the modal body
+            modalBody.innerHTML = `
+                <p><strong>Location:</strong> ${toilet.lat}, ${toilet.lon}</p>
+                <p><strong>Fee:</strong> ${toilet.tags.fee || 'Not specified'}</p>
+                <p><strong>Type:</strong> ${toilet.tags.amenity || 'Not specified'}</p>
+                <p><strong>Hours:</strong> ${toilet.tags.opening_hours || 'Not specified'}</p>
+                <p><strong>Non-customers:</strong> ${toilet.tags.access || 'Not specified'}</p>
+                <p><strong>Wheelchair Accessible:</strong> ${toilet.tags.wheelchair || 'Not specified'}</p>
+                <p><strong>Description:</strong> ${toilet.tags.description || 'Not available'}</p>
+                <p><strong>Changing Table:</strong> ${toilet.tags.changing_table || 'Not specified'}</p>
+                <p><strong>Drinking Water:</strong> ${toilet.tags.drinking_water || 'Not specified'}</p>
+                <p><strong>Indoor:</strong> ${toilet.tags.indoor || 'Not specified'}</p>
+            `;
 
-                // Trigger the modal to open
-                $('#toiletModal').modal('show');
+            // Trigger the modal to open
+            $('#toiletModal').modal('show');
+        }
+
+        // Function to register event listeners for "More Information" links
+        function registerMoreInfoEventListeners() {
+            console.log('register called');
+
+        }
+
+        // Function to clear existing markers from the map
+        function clearMarkers() {
+            markers.forEach(marker => {
+                map.removeLayer(marker);
+            });
+            // Clear the markers array
+            markers = [];
+        }
+
+        // Function to handle the search
+        function handleSearch() {
+            const searchInput = document.getElementById('location-search');
+            const searchTerm = searchInput.value.trim();
+
+            // Check if the search term is not empty
+            if (searchTerm !== '') {
+                // Use a geocoding service (e.g., Nominatim) to get the coordinates of the place
+                geocodePlace(searchTerm)
+                    .then(coordinates => {
+                        if (coordinates) {
+                            // Zoom the map to the found location
+                            map.setView(coordinates, 13);
+
+                            map.once('moveend',function() {
+                                // Get the bounds (coordinates) of the currently visible map area
+                                clearMarkers();
+                                const bounds = map.getBounds();
+                                const northEast = bounds.getNorthEast();
+                                const southWest = bounds.getSouthWest();
+                                console.log('northEast:', northEast);
+                                console.log('southWest:',southWest);
+                                fetchToiletsWithinBounds(northEast, southWest)
+                                    .then(toilets => {
+                                        console.log("Toilets near the location:", toilets);
+                                        // Display the toilets on the map or in a list
+                                        displayToiletsOnMap(toilets);
+                                    })
+                                    .catch(error => {
+                                        console.error("Error fetching toilets:", error);
+                                    });
+                              });
+                        } else {
+                            alert('Location not found. Please try another search term.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Geocoding error:", error);
+                    });
+            } else {
+                alert('Please enter a search term.');
             }
+        }
 
-            // Function to register event listeners for "More Information" links
-            function registerMoreInfoEventListeners() {
-                console.log('register called');
-
-            }
-
-            // Function to clear existing markers from the map
-            function clearMarkers() {
-                markers.forEach(marker => {
-                    map.removeLayer(marker);
-                });
-                // Clear the markers array
-                markers = [];
+        // Attach a click event listener to the search button
+        document.getElementById('search-button').addEventListener('click', handleSearch);
+        document.getElementById('location-search').addEventListener('keyup', function (event) {
+            if (event.key === 'Enter') {
+                handleSearch();
             }
         });
+
+        // Function to geocode a place name to coordinates
+        function geocodePlace(placeName) {
+            // You can use a geocoding API or service here (e.g., Nominatim, Google Maps Geocoding)
+            // Replace this with the actual geocoding API you want to use
+            const geocodingApiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeName)}`;
+
+            return fetch(geocodingApiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        const firstResult = data[0];
+                        return [parseFloat(firstResult.lat), parseFloat(firstResult.lon)];
+                    }
+                    return null;
+                });
+        }
+
+    });
     </script>
 
     <!-- Modal for Toilet Details -->

@@ -137,51 +137,63 @@
 
         // Function to display toilets as markers on the map
         function displayToiletsOnMap(toilets) {
-
-          toilets.slice(0, 50).forEach(toilet => {
-            // Check if the toilet already exists in markers
-            const existingMarker = markers.find(marker => {
-                const latLng = marker.getLatLng();
-                return latLng.lat === toilet.lat && latLng.lng === toilet.lon;
-            });
-            if(!existingMarker){
-              let marker = L.marker([toilet.lat, toilet.lon]).addTo(map);
-
-              // Create the popup content
-              const popupContent = `
-                  <strong>Toilet Information</strong><br>
-                  Location: ${toilet.lat}, ${toilet.lon}<br>
-                  Hours: ${toilet.tags.opening_hours || 'Not specified'}<br>
-                  Fee: ${toilet.tags.fee || 'Not specified'}<br>
-                  <a href="#" class="more-info-link" data-toilet-info='${JSON.stringify(toilet)}'>More Information</a>`;
-
-              // Create the popup
-              const popup = L.popup({
-                  autoPan: true, // Enable auto-panning to keep the popup within the map bounds
-                  autoPanPadding: L.point(50, 50), // Adjust padding to control the position
-              }).setContent(popupContent);
-
-              marker.bindPopup(popup);
-
-              markers.push(marker);
-            }
-          });
-
-
-                // Register event listeners for "More Information" links after adding markers
-                registerMoreInfoEventListeners();
-
-
-                // Event delegation for "More Information" links
-                $(document).on('click', '.more-info-link', function(event) {
-                    event.preventDefault();
-                    console.log('Link clicked'); // Check if this message appears in the console
-                    console.log(this)
-                    const toiletInfo = JSON.parse($(this).attr('data-toilet-info'));
-                    console.log('Toilet info:', toiletInfo); // Check if the data is extracted correctly
-                    openToiletModal(toiletInfo);
+            // Limit the number of displayed toilets to 50
+            toilets.slice(0, 50).forEach(toilet => {
+                // Check if the toilet already exists in markers
+                const existingMarker = markers.find(marker => {
+                    const latLng = marker.getLatLng();
+                    return latLng.lat === toilet.lat && latLng.lng === toilet.lon;
                 });
+
+                if (!existingMarker) {
+                    // Create the marker
+                    let marker = L.marker([toilet.lat, toilet.lon]).addTo(map);
+
+                    // Create the popup content
+                    const popupContent = `
+                        <strong>Toilet Information</strong><br>
+                        Location: ${toilet.lat}, ${toilet.lon}<br>
+                        Hours: ${toilet.tags.opening_hours || 'Not specified'}<br>
+                        Fee: ${toilet.tags.fee || 'Not specified'}<br>
+                        <a href="#" class="more-info-link" data-toilet-info='${JSON.stringify(toilet)}'>More Information</a>`;
+
+                    // Create the popup
+                    const popup = L.popup({
+                        autoPan: true, // Enable auto-panning to keep the popup within the map bounds
+                        autoPanPadding: L.point(50, 50), // Adjust padding to control the position
+                    }).setContent(popupContent);
+
+                    marker.bindPopup(popup);
+
+                    // Add the marker to the markers array
+                    markers.push(marker);
+                }
+            });
+
+            // Now that markers have been added, check if there are more than 50 markers and remove the excess
+            if (markers.length > 50) {
+                const excessMarkers = markers.slice(50);
+                excessMarkers.forEach(marker => {
+                    map.removeLayer(marker);
+                });
+                markers = markers.slice(0, 50); // Keep only the first 50 markers
             }
+
+            // Register event listeners for "More Information" links after adding markers
+            registerMoreInfoEventListeners();
+            // Event delegation for "More Information" links
+            $(document).on('click', '.more-info-link', function(event) {
+                event.preventDefault();
+                console.log('Link clicked'); // Check if this message appears in the console
+                console.log(this)
+                const toiletInfo = JSON.parse($(this).attr('data-toilet-info'));
+                console.log('Toilet info:', toiletInfo); // Check if the data is extracted correctly
+                openToiletModal(toiletInfo);
+            });
+        }
+
+
+
 
         // JavaScript code to open the modal and populate it with data
         function openToiletModal(toilet) {

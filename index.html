@@ -136,7 +136,12 @@
 
         // Function to display toilets as markers on the map
         function displayToiletsOnMap(toilets) {
-            toilets.forEach(toilet => {
+          // Initialize a counter to keep track of displayed toilets
+          let displayedToiletsCount = 0;
+
+          toilets.forEach(toilet => {
+            // Check if the displayedToiletsCount is less than 50
+              if (displayedToiletsCount < 50) {
                 let marker = L.marker([toilet.lat, toilet.lon])
                     .addTo(map)
                     .bindPopup(`
@@ -149,11 +154,13 @@
                         // Display basic information when clicked
                         this.openPopup();
                     });
+                // Increment the displayedToiletsCount
+                displayedToiletsCount++;
 
                 // Add the marker to the markers array
                 markers.push(marker);
-
-            });
+              }
+          });
 
                 // Register event listeners for "More Information" links after adding markers
                 registerMoreInfoEventListeners();

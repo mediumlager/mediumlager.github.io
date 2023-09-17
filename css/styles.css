@@ -1,0 +1,125 @@
+/* Reset some default styles */
+html, body, div, h1, h2, ul, li, p {
+  margin: 0;
+  padding: 0;
+}
+
+
+/* Adjust the position and styling of the results container */
+.container {
+  display: flex; /* Use flexbox to create a row layout */
+  max-width: 100%; /* Set a maximum width to prevent overflow */
+  padding: 10px;
+}
+
+#toiletList {
+  flex: 1; /* Allow the list to grow and occupy available space */
+  max-height: 70vh; /* Set a maximum height equal to the map's height */
+  max-width: 200px;
+  overflow-y: auto; /* Add scrollbar if needed */
+  padding: 10px;
+  border-right: 1px solid #ccc; /* Add a vertical border to separate it from the map */
+}
+
+#map {
+  flex: 2; /* Adjust flex value to control map's width */
+  height: 70vh; /* Use viewport height for a full-screen map */
+}
+
+/* Add some basic styling for the list items */
+#toiletList ul {
+  list-style: none;
+}
+
+#toiletList li {
+  margin-bottom: 5px;
+  padding: 5px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+}
+
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+#map {
+    width: 100vw;
+    max-width: 800px; /* Adjust this value as needed */
+    height: 70vh; /* Use viewport height for a full-screen map */
+    max-height: 800px;
+}
+
+.info-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+}
+
+.info-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+}
+
+@media (max-width:990px) {
+	.results-tab {
+	    /* Existing styles for the Results tab */
+	    position: fixed;
+	    top: 50%;
+	    left: 0;
+	    transform: translateY(-50%);
+	    background-color: #333;
+	    color: white;
+	    padding: 10px 5px;
+	    border-top-right-radius: 10px;
+	    border-bottom-right-radius: 10px;
+	    writing-mode: vertical-rl; /* Vertical text */
+	    cursor: pointer;
+	}
+
+	.results-container {
+	    position: fixed;
+	    top: 0;
+	    left: -300px; /* Initially hidden by setting a negative left position */
+	    width: 300px; /* Adjust the width as needed */
+	    height: 100%;
+	    background-color: #fff; /* Background color for the results container */
+	    transition: left 0.3s ease-in-out; /* Add a smooth sliding transition */
+	    overflow-y: auto; /* Enable scrolling if the content exceeds the container height */
+	}
+
+    #toiletList {
+        display: none;
+    }
+
+}
+
+/* Highlight style for selected list item */
+.highlighted {
+    background-color: yellow; /* You can use any highlight style you prefer */
+    color: black; /* Text color for better visibility */
+}
+
+/* Add styles for the modal */
+.modal-dialog {
+  max-width: 800px;
+}
+
+.modal-content {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+

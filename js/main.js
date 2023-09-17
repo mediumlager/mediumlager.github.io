@@ -16,17 +16,8 @@
 
     var mapLoaded = false;
 
-    const resultsTab = document.querySelector('.results-tab');
-    const resultsContainer = document.querySelector('.results-container');
-
-    resultsTab.addEventListener('click', () => {
-        if (parseInt(getComputedStyle(resultsContainer).left) < 0) {
-            resultsContainer.style.left = '0';
-        } else {
-            resultsContainer.style.left = '-300px'; // Adjust to match the container width
-        }
-    });
-
+    // JavaScript to toggle the visibility of the results when clicking the tab
+    const toiletList = document.getElementById('toiletList');
 
     // Function to fetch toilets within a specified bounding box with a limit of 100
     function fetchToiletsWithinBounds(northEast, southWest) {
@@ -39,11 +30,9 @@
             .then(data => data.elements)
             .catch(error => console.error("Error fetching toilets:", error));
     }
-    // Function to handle the map reload
-    function handleMapReload() {
-        // You can perform any actions related to map reloading here
-        // For example, you can trigger the fetching of toilets
+    const toiletData = []; // Create an array to store toilet data
 
+    function handleMapReload() {
         const bounds = map.getBounds();
         const northEast = bounds.getNorthEast();
         const southWest = bounds.getSouthWest();
@@ -52,8 +41,14 @@
             .then(toilets => {
                 clearResultsList();
 
+                // Populate toiletData array with toilet information
+                toiletData.length = 0; // Clear existing data
+                toilets.forEach(toilet => {
+                    toiletData.push(toilet);
+                });
+
                 // Iterate through the toilets and add them to the list
-                console.log('Going to iterate now')
+                console.log('Going to iterate now');
                 toilets.forEach(toilet => {
                     addToiletToList(toilet);
                 });
@@ -165,24 +160,53 @@
         toiletDetailsSection.style.display = 'block';
     }
 
-    // When a marker is clicked, find the corresponding list item and highlight it
-    function highlightListItem(toiletId) {
-        // Remove the highlight from all list items
-        const listItems = document.querySelectorAll('#toiletList li');
-        listItems.forEach((item) => {
-            item.classList.remove('highlighted');
+    // Function to open the results modal and populate it with data
+    function openResultsModal() {
+        // Get references to the modal elements
+        const modalTitle = document.getElementById('resultsModalLabel');
+        const modalList = document.getElementById('resultsList');
+
+        // Clear any existing content in the results modal
+        modalList.innerHTML = '';
+
+        // Populate the results modal with data from toiletData
+        toiletData.forEach(toilet => {
+            const resultItem = document.createElement('li');
+            resultItem.innerHTML = `<a href="#" class="modal-result" id="${toilet.id}">${toilet.tags.name ? toilet.tags.name : `Toilet #${toilet.id}`}</a>`;
+            resultItem.id = toilet.id;
+            modalList.appendChild(resultItem);
         });
 
-        // Find the list item with the matching data-toilet-id
-        const listItem = document.querySelector(`li[data-marker-id="${toiletId}"]`);
+        // Attach click event listeners to the modal result items
+        const modalResultItems = modalList.querySelectorAll('.modal-result');
+        modalResultItems.forEach((modalResultItem) => {
+            modalResultItem.addEventListener('click', (event) => {
+                event.preventDefault();
+                console.log(modalResultItem.getAttribute('id'));
+                triggerMarkerClick(modalResultItem.getAttribute('id')); 
+                $('#resultsModal').modal('hide');   
+            });
+        });
 
-        // Highlight the matched list item
-        if (listItem) {
-            listItem.classList.add('highlighted');
-        } else {
-            console.error(`List item with data-marker-id "${toiletId}" not found.`);
-        }
+        // Trigger the modal to open
+        $('#resultsModal').modal('show');
     }
+    // Add an event listener to the button to open the modal
+    const listResultsBtn = document.getElementById('listResultsBtn');
+    listResultsBtn.addEventListener('click', function () {
+        // Get all toilet items with class "toilet-item"
+        const toiletItems = document.querySelectorAll('.toilet-item');
+
+        // Extract the data-marker-id attributes and store them in an array
+        const markerIds = Array.from(toiletItems).map((item) => item.getAttribute('data-marker-id'));
+
+        // Now, markerIds contains an array of marker IDs, and you can use this data to list the results
+        console.log(markerIds);
+        console.log(toiletItems);
+        // Replace 'resultsData' with your actual data or results array
+        const resultsData = markerIds;
+        openResultsModal(resultsData);
+    });
 
     // JavaScript code to open the modal and populate it with data
     function openToiletModal(toilet) {
@@ -368,7 +392,6 @@
       console.log(markers)
       if (marker) {
         // Open the marker's popup
-        highlightListItem(markerId);
         marker.openPopup();
       }
     }

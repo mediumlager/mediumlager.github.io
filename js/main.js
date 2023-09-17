@@ -420,4 +420,10 @@
             });
     }
 
+    // Check if fullscreen API is available
+    if (document.documentElement.requestFullscreen) {
+        // Request fullscreen mode
+        document.documentElement.requestFullscreen();
+    }
+
 });
